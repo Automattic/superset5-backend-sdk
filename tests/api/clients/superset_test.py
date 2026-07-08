@@ -1647,6 +1647,54 @@ def test_delete_chart(mocker: MockerFixture) -> None:
     delete_resource.assert_called_with("chart", 1)
 
 
+def test_warm_up_cache(requests_mock: Mocker) -> None:
+    """
+    Test the ``warm_up_cache`` method.
+    """
+    requests_mock.put(
+        "https://superset.example.org/api/v1/chart/warm_up_cache",
+        json={
+            "result": [
+                {"chart_id": 1, "viz_error": None, "viz_status": "success"},
+            ],
+        },
+    )
+
+    auth = Auth()
+    client = SupersetClient("https://superset.example.org/", auth)
+
+    assert client.warm_up_cache(1) == [
+        {"chart_id": 1, "viz_error": None, "viz_status": "success"},
+    ]
+    assert requests_mock.last_request.json() == {"chart_id": 1}
+
+
+def test_warm_up_cache_error(requests_mock: Mocker) -> None:
+    """
+    Test the ``warm_up_cache`` method when the server errors.
+    """
+    requests_mock.put(
+        "https://superset.example.org/api/v1/chart/warm_up_cache",
+        text="Gateway Time-out",
+        headers={"Content-Type": "text/html"},
+        status_code=504,
+    )
+
+    auth = Auth()
+    client = SupersetClient("https://superset.example.org/", auth)
+
+    with pytest.raises(SupersetError) as excinfo:
+        client.warm_up_cache(1)
+    assert excinfo.value.status == 504
+    assert excinfo.value.errors == [
+        {
+            "message": "Gateway Time-out",
+            "error_type": "UNKNOWN_ERROR",
+            "level": ErrorLevel.ERROR,
+        },
+    ]
+
+
 def test_delete_dashboard(mocker: MockerFixture) -> None:
     """
     Test the ``delete_dashboard`` method.

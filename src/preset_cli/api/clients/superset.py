@@ -708,6 +708,18 @@ class SupersetClient:  # pylint: disable=too-many-public-methods
         """
         self.delete_resource("chart", chart_id)
 
+    def warm_up_cache(self, chart_id: int) -> List[Any]:
+        """
+        Warm up the cache for a chart, returning per-chart viz statuses.
+        """
+        url = self.baseurl / "api/v1/chart/warm_up_cache"
+        response = self.session.put(url, json={"chart_id": chart_id})
+        validate_response(response)
+
+        payload = response.json()
+
+        return payload["result"]
+
     def delete_dataset(self, dataset_id: int) -> None:
         """
         Delete a dataset.
