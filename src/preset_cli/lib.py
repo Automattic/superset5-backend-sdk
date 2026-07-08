@@ -2,6 +2,7 @@
 Basic helper functions.
 """
 
+import functools
 import json
 import logging
 import sys
@@ -98,7 +99,7 @@ def validate_response(response: Response) -> None:
         ]
 
     _logger.error(message)
-    raise SupersetError(errors=errors)
+    raise SupersetError(errors=errors, status=response.status_code)
 
 
 def split_comma(  # pylint: disable=unused-argument
@@ -131,6 +132,7 @@ def raise_cli_errors(function: Callable[..., Any]) -> Callable[..., Any]:
     Decorator to catch any CLIError raised and exits the execution with an error code.
     """
 
+    @functools.wraps(function)
     def wrapper(*args, **kwargs):
         try:
             return function(*args, **kwargs)

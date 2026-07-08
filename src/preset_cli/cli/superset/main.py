@@ -1,12 +1,14 @@
 """
 Main entry point for Superset commands.
 """
+
 from typing import Any, Optional
 
 import click
 from yarl import URL
 
 from preset_cli.auth.superset import SupersetJWTAuth, UsernamePasswordAuth
+from preset_cli.cli.superset.delete import delete_assets
 from preset_cli.cli.superset.export import (
     export_assets,
     export_ownership,
@@ -66,6 +68,7 @@ superset_cli.add_command(sql)
 superset_cli.add_command(sync)
 superset_cli.add_command(export_assets)
 superset_cli.add_command(export_assets, name="export")  # for backwards compatibility
+superset_cli.add_command(delete_assets)
 superset_cli.add_command(export_users)
 superset_cli.add_command(export_rls)
 superset_cli.add_command(export_roles)
@@ -96,7 +99,10 @@ def mutate_commands(source: click.core.Group, target: click.core.Group) -> None:
             @click.group()
             @click.pass_context
             def new_group(
-                ctx: click.core.Context, *args: Any, command=command, **kwargs: Any
+                ctx: click.core.Context,
+                *args: Any,
+                command=command,
+                **kwargs: Any,
             ) -> None:
                 ctx.invoke(command, *args, **kwargs)
 
@@ -109,7 +115,10 @@ def mutate_commands(source: click.core.Group, target: click.core.Group) -> None:
             @click.command()
             @click.pass_context
             def new_command(
-                ctx: click.core.Context, *args: Any, command=command, **kwargs: Any
+                ctx: click.core.Context,
+                *args: Any,
+                command=command,
+                **kwargs: Any,
             ) -> None:
                 for instance in ctx.obj["WORKSPACES"]:
                     click.echo(f"\n{instance}")

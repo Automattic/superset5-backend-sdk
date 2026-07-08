@@ -13,12 +13,15 @@ def test_username_password_auth(requests_mock: Mocker) -> None:
     """
     Tests for the username/password authentication mechanism.
     """
-    csrf_token = "CSFR_TOKEN"
-    requests_mock.get(
-        "https://superset.example.org/login/",
-        text=f'<html><body><input id="csrf_token" value="{csrf_token}"></body></html>',
+    csrf_token = "CSRF_TOKEN"
+    requests_mock.post(
+        "https://superset.example.org/api/v1/security/login",
+        json={"access_token": "ACCESS_TOKEN"},
     )
-    requests_mock.post("https://superset.example.org/login/")
+    requests_mock.get(
+        "https://superset.example.org/api/v1/security/csrf_token/",
+        json={"result": csrf_token},
+    )
 
     auth = UsernamePasswordAuth(
         URL("https://superset.example.org/"),
@@ -28,22 +31,53 @@ def test_username_password_auth(requests_mock: Mocker) -> None:
     assert auth.get_headers() == {
         "X-CSRFToken": csrf_token,
     }
+    assert auth.session.headers["Authorization"] == "Bearer ACCESS_TOKEN"
+    assert auth.session.headers["X-CSRFToken"] == csrf_token
 
-    assert (
-        requests_mock.last_request.text
-        == "username=admin&password=password123&csrf_token=CSFR_TOKEN"
+    login_request = requests_mock.request_history[0]
+    assert login_request.json() == {
+        "username": "admin",
+        "password": "password123",
+        "provider": "ldap",
+    }
+
+
+def test_username_password_auth_custom_provider(requests_mock: Mocker) -> None:
+    """
+    Tests that the login provider can be overridden.
+    """
+    requests_mock.post(
+        "https://superset.example.org/api/v1/security/login",
+        json={"access_token": "ACCESS_TOKEN"},
     )
+    requests_mock.get(
+        "https://superset.example.org/api/v1/security/csrf_token/",
+        json={"result": "CSRF_TOKEN"},
+    )
+
+    UsernamePasswordAuth(
+        URL("https://superset.example.org/"),
+        "admin",
+        "password123",
+        provider="db",
+    )
+
+    login_request = requests_mock.request_history[0]
+    assert login_request.json()["provider"] == "db"
 
 
 def test_username_password_auth_no_csrf(requests_mock: Mocker) -> None:
     """
     Tests for the username/password authentication mechanism.
     """
-    requests_mock.get(
-        "https://superset.example.org/login/",
-        text="<html><body>WTF_CSRF_ENABLED = False</body></html>",
+    requests_mock.post(
+        "https://superset.example.org/api/v1/security/login",
+        json={"access_token": "ACCESS_TOKEN"},
     )
-    requests_mock.post("https://superset.example.org/login/")
+    requests_mock.get(
+        "https://superset.example.org/api/v1/security/csrf_token/",
+        json={"result": None},
+    )
 
     auth = UsernamePasswordAuth(
         URL("https://superset.example.org/"),
@@ -52,8 +86,8 @@ def test_username_password_auth_no_csrf(requests_mock: Mocker) -> None:
     )
     # pylint: disable=use-implicit-booleaness-not-comparison
     assert auth.get_headers() == {}
-
-    assert requests_mock.last_request.text == "username=admin&password=password123"
+    assert auth.session.headers["Authorization"] == "Bearer ACCESS_TOKEN"
+    assert "X-CSRFToken" not in auth.session.headers
 
 
 def test_jwt_auth_superset(mocker: MockerFixture) -> None:
