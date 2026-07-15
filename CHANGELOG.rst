@@ -5,6 +5,22 @@ Changelog
 Next
 ====
 
+Version 0.4.6 - 2026-07-15
+==========================
+
+- Fixed a ``RecursionError`` in the 401 re-authentication flow: the ``reauth``
+  response hook now disables itself while it runs, so requests made during
+  ``auth()`` (login, CSRF token) and the single retry of the failed request
+  can no longer re-enter it. A 401 during authentication surfaces as an
+  ``HTTPError``, and a request that keeps returning 401 is retried only once.
+- The retried request now carries the refreshed ``Authorization`` header
+  (previously it was re-sent with the stale token, which kept failing with 401
+  and re-entered the hook indefinitely). The retry also honors the original
+  request's settings (TLS verification, timeout) instead of forcing
+  ``verify=False``.
+- ``UsernamePasswordAuth`` no longer sends a stale ``Authorization`` header to
+  the login endpoint when re-authenticating.
+
 Version 0.3.12 - 2026-04-22
 ==========================
 

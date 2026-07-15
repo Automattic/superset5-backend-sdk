@@ -15,7 +15,13 @@ class UsernamePasswordAuth(Auth):  # pylint: disable=too-few-public-methods
     Auth to Superset via username/password.
     """
 
-    def __init__(self, baseurl: URL, username: str, password: Optional[str] = None, provider: Optional[str] = None):
+    def __init__(
+        self,
+        baseurl: URL,
+        username: str,
+        password: Optional[str] = None,
+        provider: Optional[str] = None,
+    ):
         super().__init__()
 
         self.csrf_token: Optional[str] = None
@@ -37,9 +43,14 @@ class UsernamePasswordAuth(Auth):  # pylint: disable=too-few-public-methods
             "password": self.password,
             "provider": self.provider,
         }
-        if "Referer" in self.session.headers:
-            del self.session.headers["Referer"]
-        response = self.session.post(self.baseurl / "api/v1/security/login", json=body)
+        # Drop headers left over from a previous login: the login request must not
+        # carry a stale (expired) Bearer token or Referer.
+        self.session.headers.pop("Authorization", None)
+        self.session.headers.pop("Referer", None)
+        response = self.session.post(
+            self.baseurl / "api/v1/security/login",
+            json=body,
+        )
         response.raise_for_status()
         return response.json()["access_token"]
 
